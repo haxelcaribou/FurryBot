@@ -22,8 +22,11 @@ async def on_message(message):
 
     message_content = message.clean_content.lower()
 
-    if "e621" in message_content:
-        await channel.send("Lewd")
+    if "lewd" in message_content:
+        if channel.is_nsfw():
+            await channel.send("Actaully I don't do anything. Nice try tho.")
+        else:
+            await channel.send("Oi! Not in front of the children.")
 
 
 client.run(TOKEN)
