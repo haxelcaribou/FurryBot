@@ -2,6 +2,7 @@
 
 import discord
 import secrets
+import re
 
 client = discord.Client()
 TOKEN = secrets.token
@@ -18,6 +19,11 @@ async def on_message(message):
         return
 
     channel = message.channel
+
+    message_content = message.clean_content.lower()
+
+    if "e621" in message_content:
+        await channel.send("Lewd")
 
 
 client.run(TOKEN)
