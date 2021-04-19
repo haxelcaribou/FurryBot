@@ -2,6 +2,7 @@
 
 import discord
 import secrets
+import blocklist
 import re
 import requests
 
@@ -37,11 +38,16 @@ async def on_message(message):
         if not channel.is_nsfw():
             params["tags"] += " rating:s"
 
+        for tag in blocklist.tags:
+            params["tags"] += " -" + tag
 
         r = requests.get(url, params=params, headers=headers)
 
+        print(r.url)
+
         if r.status_code != 200:
             await channel.send("Error: recieved status code: " + str(r.status_code))
+            return
 
         response = r.json()
 
@@ -49,6 +55,7 @@ async def on_message(message):
 
         if len(posts) < 1:
             await channel.send("no images found")
+            return
 
         image_url = posts[0]["file"]["url"]
         image_description = posts[0]["description"]
