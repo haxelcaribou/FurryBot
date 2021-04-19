@@ -53,7 +53,8 @@ async def on_message(message):
         image_url = posts[0]["file"]["url"]
         image_description = posts[0]["description"]
 
-        await channel.send(image_description)
+        if len(image_description) < 500:
+            await channel.send(image_description)
         await channel.send(image_url)
 
 
