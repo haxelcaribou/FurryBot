@@ -28,5 +28,8 @@ tags = {
     "nezumi_(artist)",
     "nightmare_fuel",
     "what",
-    "flash"
+    "flash",
+    "huge_filesize",
+    "vore",
+    "hyper"
 }
