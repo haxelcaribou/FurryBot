@@ -38,16 +38,22 @@ async def on_message(message):
             params["tags"] += " rating:s"
 
 
-        #  TODO: get url
         r = requests.get(url, params=params, headers=headers)
 
-        print(r.url)
+        if r.status_code != 200:
+            await channel.send("Error: recieved status code: " + str(r.status_code))
 
         response = r.json()
 
-        # get response
-        image_url = response["posts"][0]["file"]["url"]
+        posts = response["posts"]
 
+        if len(posts) < 1:
+            await channel.send("no images found")
+
+        image_url = posts[0]["file"]["url"]
+        image_description = posts[0]["description"]
+
+        await channel.send(image_description)
         await channel.send(image_url)
 
 
