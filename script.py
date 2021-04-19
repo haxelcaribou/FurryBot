@@ -15,7 +15,7 @@ headers = {
 }
 
 
-status = "!~"
+status = "!~ tags"
 
 
 @client.event
