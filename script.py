@@ -3,10 +3,15 @@
 import discord
 import secrets
 import re
+import requests
 
 client = discord.Client()
 TOKEN = secrets.token
 
+url = "https://e621.net/posts.json"
+headers = {
+    "User-Agent": "DiscordFurryBot V0.1",
+}
 
 @client.event
 async def on_ready():
@@ -22,11 +27,28 @@ async def on_message(message):
 
     message_content = message.clean_content.lower()
 
-    if "lewd" in message_content:
-        if channel.is_nsfw():
-            await channel.send("Actaully I don't do anything. Nice try tho.")
-        else:
-            await channel.send("Oi! Not in front of the children.")
+    if message_content.startswith("!~ "):
+
+        params = {
+            "limit": 1,
+            "tags": message_content[3:]
+        }
+
+        if not channel.is_nsfw():
+            params["tags"] += " rating:s"
+
+
+        #  TODO: get url
+        r = requests.get(url, params=params, headers=headers)
+
+        print(r.url)
+
+        response = r.json()
+
+        # get response
+        image_url = response["posts"][0]["file"]["url"]
+
+        await channel.send(image_url)
 
 
 client.run(TOKEN)
