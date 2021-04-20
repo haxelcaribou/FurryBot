@@ -67,7 +67,7 @@ async def on_message(message):
 
         # TODO: Scrub image descriptions
 
-        if image_description != None and len(image_description) < 500 and !url_regex.match(image_description):
+        if image_description != None and len(image_description) < 500 and not url_regex.match(image_description):
             await channel.send(image_description)
         await channel.send(image_url)
 
