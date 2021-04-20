@@ -33,5 +33,13 @@ tags = {
     "huge_filesize",
     "vore",
     "hyper",
-    "comic"
+    "comic",
+    "score:<0"
+}
+nsfw_only = {
+    "big_breasts",
+    "foot_fetish",
+    "foot_focus",
+    "big_nipples",
+    "obese"
 }
