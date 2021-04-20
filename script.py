@@ -3,7 +3,6 @@
 import discord
 import secrets
 import blocklist
-import re
 import requests
 
 client = discord.Client()
