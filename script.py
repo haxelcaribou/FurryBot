@@ -3,7 +3,6 @@
 import discord
 import secrets
 import blocklist
-import re
 import requests
 
 client = discord.Client()
@@ -63,10 +62,12 @@ async def on_message(message):
             return
 
         image_url = posts[0]["file"]["url"]
-        image_description = posts[0]["description"]
+        #image_description = posts[0]["description"]
 
-        if len(image_description) < 500:
-            await channel.send(image_description)
+        # TODO: Scrub image descriptions
+
+        #if len(image_description) < 500:
+            #await channel.send(image_description)
         await channel.send(image_url)
 
 
