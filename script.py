@@ -14,8 +14,8 @@ headers = {
     "User-Agent": "DiscordFurryBot V0.1",
 }
 
-url_regex = re.compile(
-    r"(https?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+)")
+# url_regex = re.compile(
+#     r"(https?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+)")
 
 status = "!~ tags"
 
@@ -63,12 +63,12 @@ async def on_message(message):
             return
 
         image_url = posts[0]["file"]["url"]
-        image_description = posts[0]["description"]
-
+        # image_description = posts[0]["description"]
+        #
         # TODO: Scrub image descriptions
-
-        if image_description != None and len(image_description) < 500 and not url_regex.match(image_description):
-            await channel.send(image_description)
+        #
+        # if image_description != None and len(image_description) < 500 and not url_regex.match(image_description):
+        #     await channel.send(image_description)
         await channel.send(image_url)
 
 
