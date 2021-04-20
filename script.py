@@ -4,6 +4,7 @@ import discord
 import secrets
 import blocklist
 import requests
+import re
 
 client = discord.Client()
 TOKEN = secrets.token
@@ -13,6 +14,8 @@ headers = {
     "User-Agent": "DiscordFurryBot V0.1",
 }
 
+url_regex = re.compile(
+    r"(https?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+)")
 
 status = "!~ tags"
 
@@ -60,12 +63,12 @@ async def on_message(message):
             return
 
         image_url = posts[0]["file"]["url"]
-        #image_description = posts[0]["description"]
+        image_description = posts[0]["description"]
 
         # TODO: Scrub image descriptions
 
-        #if len(image_description) < 500:
-            #await channel.send(image_description)
+        if image_description != Null and len(image_description) < 500 and not url_regex.match(image_description):
+            await channel.send(image_description)
         await channel.send(image_url)
 
 
