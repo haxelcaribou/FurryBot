@@ -32,5 +32,6 @@ tags = {
     "flash",
     "huge_filesize",
     "vore",
-    "hyper"
+    "hyper",
+    "comic"
 }
