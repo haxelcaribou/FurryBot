@@ -7,7 +7,7 @@ import requests
 import re
 
 client = discord.Client()
-TOKEN = secrets.token
+
 
 url = "https://e621.net/posts.json"
 headers = {
@@ -38,19 +38,21 @@ async def on_message(message):
     if message_content.startswith("!~ "):
 
         params = {
+            "login": secrets.login,
+            "api_key": secrets.api_key,
             "limit": 1,
             "tags": message_content[3:]
         }
 
         if not channel.is_nsfw():
-            params["tags"] += " rating:s status:active"
+            params["tags"] += " rating:s status:active tagcount:>15"
             for tag in blocklist.nsfw_only:
                 params["tags"] += " -" + tag
 
-        for tag in blocklist.tags:
-            params["tags"] += " -" + tag
 
         r = requests.get(url, params=params, headers=headers)
+
+        print(r.url)
 
         if r.status_code != 200:
             await channel.send("Error: recieved status code: " + str(r.status_code))
@@ -72,4 +74,4 @@ async def on_message(message):
         await channel.send(image_url)
 
 
-client.run(TOKEN)
+client.run(secrets.token)
