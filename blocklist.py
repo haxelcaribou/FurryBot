@@ -37,7 +37,9 @@ tags = {
     "score:<0"
 }
 nsfw_only = {
+    "underwear",
     "big_breasts",
+    "cleavage",
     "foot_fetish",
     "foot_focus",
     "big_nipples",
