@@ -51,8 +51,7 @@ async def on_message(message):
 
 
         r = requests.get(url, params=params, headers=headers)
-
-        print(r.url)
+        
 
         if r.status_code != 200:
             await channel.send("Error: recieved status code: " + str(r.status_code))
