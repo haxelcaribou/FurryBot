@@ -43,7 +43,7 @@ async def on_message(message):
         }
 
         if not channel.is_nsfw():
-            params["tags"] += " rating:s status:active"
+            params["tags"] += " rating:s status:active tagcount:>15"
             for tag in blocklist.nsfw_only:
                 params["tags"] += " -" + tag
 
