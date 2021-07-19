@@ -1,5 +1,5 @@
 # FurryBot
-Grabs pictures from e621 and posts to discord.
+Grabs pictures from e621.net and posts them to discord.
 
 The bot will respond to any message starting with "!~". All following text will be interpreted as tags, using normal e621 syntax. In SFW channels only safe and verified pictures will be posted.
 
