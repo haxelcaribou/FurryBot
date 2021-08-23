@@ -6,6 +6,11 @@ import blocklist
 import requests
 import re
 
+# TODO:
+# see more than most recent image
+# add way to look at image data (post artist?)
+# tag search
+# better description display
 
 client = discord.Client()
 
@@ -22,6 +27,8 @@ url_regex = re.compile(
 status = "!~ tags"
 
 # returns true if any tag is on the denylist
+
+
 def check_tags(tags):
     for tag in tags:
         if tag in blocklist.tags:

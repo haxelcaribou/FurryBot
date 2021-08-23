@@ -15,7 +15,7 @@ tags = {
     "scat",
     "diaper",
     "fart",
-    # "young rating:e",
+    # "young rating:e", # commented out because multi tag blocking does not currently work
     # "young rating:q solo",
     # "cub -rating:s",
     "cub",
