@@ -6,13 +6,18 @@ import blocklist
 import requests
 import re
 
+# BUG:
+# Current implementations depends on e6 to blocklist on their side when making
+# requests, which apparently does not happen. For now the blocklist is
+# ineffective.
+
 client = discord.Client()
 
 
 url = "https://e621.net/posts.json"
 headers = {
     # If you are running this yourself I would change the User_Agent to include your main e621 username
-    "User-Agent": "DiscordFurryBot V1.0",
+    "User-Agent": "DiscordFurryBot V1.1",
 }
 
 url_regex = re.compile(
@@ -39,8 +44,6 @@ async def on_message(message):
     if message_content.startswith("!~ "):
 
         params = {
-            #"login": secrets.login,
-            #"api_key": secrets.api_key,
             "limit": 1,
             "tags": message_content[3:]
         }
@@ -50,9 +53,8 @@ async def on_message(message):
             for tag in blocklist.nsfw_only:
                 params["tags"] += " -" + tag
 
-
-        r = requests.get(url, params=params, headers=headers, auth=(secrets.login,secrets.api_key))
-
+        r = requests.get(url, params=params, headers=headers,
+                         auth=(secrets.login, secrets.api_key))
 
         if r.status_code != 200:
             await channel.send("Error: recieved status code: " + str(r.status_code))
