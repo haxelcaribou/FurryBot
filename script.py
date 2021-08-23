@@ -6,10 +6,6 @@ import blocklist
 import requests
 import re
 
-# BUG:
-# Current implementations depends on e6 to blocklist on their side when making
-# requests, which apparently does not happen. For now the blocklist is
-# ineffective.
 
 client = discord.Client()
 
@@ -17,13 +13,20 @@ client = discord.Client()
 url = "https://e621.net/posts.json"
 headers = {
     # If you are running this yourself I would change the User_Agent to include your main e621 username
-    "User-Agent": "DiscordFurryBot V1.1",
+    "User-Agent": "DiscordFurryBot V1.2",
 }
 
 url_regex = re.compile(
     r"(https?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+)")
 
 status = "!~ tags"
+
+# returns true if any tag is on the denylist
+def check_tags(tags):
+    for tag in tags:
+        if tag in blocklist.tags:
+            return True
+    return False
 
 
 @client.event
@@ -44,7 +47,7 @@ async def on_message(message):
     if message_content.startswith("!~ "):
 
         params = {
-            "limit": 1,
+            "limit": 32,
             "tags": message_content[3:]
         }
 
@@ -64,16 +67,24 @@ async def on_message(message):
 
         posts = response["posts"]
 
-        if len(posts) < 1:
-            await channel.send("no images found")
+        for post in posts:
+
+            if check_tags(post["tags"]["general"]):
+                continue
+
+            if post["score"]["total"] < 0:
+                continue
+
+            image_url = post["file"]["url"]
+            image_description = post["description"]
+
+            if image_description and image_description != "" and len(image_description) < 500 and not url_regex.match(image_description):
+                await channel.send(image_description)
+            await channel.send(image_url)
             return
 
-        image_url = posts[0]["file"]["url"]
-        image_description = posts[0]["description"]
-
-        if image_description and image_description != "" and len(image_description) < 500 and not url_regex.match(image_description):
-            await channel.send(image_description)
-        await channel.send(image_url)
+        await channel.send("no images found")
+        return
 
 
 client.run(secrets.token)
