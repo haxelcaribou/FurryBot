@@ -11,7 +11,8 @@ client = discord.Client()
 
 url = "https://e621.net/posts.json"
 headers = {
-    "User-Agent": "DiscordFurryBot V0.1",
+    # If you are running this yourself I would change the User_Agent to include your main e621 username
+    "User-Agent": "DiscordFurryBot V1.0",
 }
 
 url_regex = re.compile(
@@ -51,7 +52,7 @@ async def on_message(message):
 
 
         r = requests.get(url, params=params, headers=headers)
-        
+
 
         if r.status_code != 200:
             await channel.send("Error: recieved status code: " + str(r.status_code))
