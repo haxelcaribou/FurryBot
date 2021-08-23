@@ -39,8 +39,8 @@ async def on_message(message):
     if message_content.startswith("!~ "):
 
         params = {
-            "login": secrets.login,
-            "api_key": secrets.api_key,
+            #"login": secrets.login,
+            #"api_key": secrets.api_key,
             "limit": 1,
             "tags": message_content[3:]
         }
@@ -51,7 +51,7 @@ async def on_message(message):
                 params["tags"] += " -" + tag
 
 
-        r = requests.get(url, params=params, headers=headers)
+        r = requests.get(url, params=params, headers=headers, auth=(secrets.login,secrets.api_key))
 
 
         if r.status_code != 200:
