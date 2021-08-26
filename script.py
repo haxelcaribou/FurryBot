@@ -11,6 +11,7 @@ import re
 # add way to look at image data (post artist?)
 # tag search
 # better description display
+# rate limiting
 
 client = discord.Client()
 
@@ -31,7 +32,7 @@ status = "!~ tags"
 
 def check_tags(tags):
     for tag in tags:
-        if tag in blocklist.tags:
+        if tag in blocklist.general_tags:
             return True
     return False
 
@@ -57,6 +58,8 @@ async def on_message(message):
             "limit": 32,
             "tags": message_content[3:]
         }
+
+        params["tags"] += " -huge_filesize -flash"
 
         if not channel.is_nsfw():
             params["tags"] += " rating:s status:active tagcount:>15"

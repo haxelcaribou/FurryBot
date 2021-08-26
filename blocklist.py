@@ -1,4 +1,4 @@
-tags = {
+general_tags = {
     "morbidly_obese",
     "gore",
     "castration",
@@ -23,19 +23,23 @@ tags = {
     "loli",
     "human_on_feral",
     "bestiality",
-    "incest_(lore)",
     "advertisement",
     "distracting_watermark",
-    "nezumi_(artist)",
     "nightmare_fuel",
     "what",
-    "flash",
-    "huge_filesize",
     "vore",
     "hyper",
     "comic",
-    "score:<0"
 }
+
+lore_tags = {
+    "incest"
+}
+
+artist_tags = {
+    "nezumi"
+}
+
 nsfw_only = {
     "underwear",
     "big_breasts",
