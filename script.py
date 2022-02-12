@@ -87,7 +87,11 @@ async def on_message(user_message):
 
         posts = response_json["posts"]
 
-        posts = list(filter(check_post, posts))
+        filtered = []
+        for post in posts:
+            if not check_post(post):
+                filtered.append(post)
+        posts = filtered
 
         if len(posts) == 0:
             await channel.send("no images found")
