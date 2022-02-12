@@ -33,11 +33,18 @@ cache = []
 
 
 # returns true if any tag is on the blocklist
-def check_tags(tags):
+def check_post(post):
+    tags = post["tags"]["general"]
     for tag in tags:
         if tag in blocklist.general_tags:
             return True
+    if post["score"]["total"] < 0:
+        return True
     return False
+
+
+def clamp(num, min_num, max_num):
+    return max(min(num, max_num), min_num)
 
 
 @client.event
@@ -80,44 +87,62 @@ async def on_message(user_message):
 
         posts = response["posts"]
 
-        post_num = 1
+        posts = list(filter(check_post, posts))
 
-        for post in posts:
-
-            post_num += 1
-
-            if check_tags(post["tags"]["general"]):
-                continue
-
-            if post["score"]["total"] < 0:
-                continue
-
-            image_url = post["file"]["url"]
-            image_description = post["description"]
-
-            if image_description and image_description != "" and len(image_description) < 500 and not url_regex.search(image_description):
-                await channel.send(image_description)
-            bot_message = await channel.send(image_url)
-            await bot_message.add_reaction("⬅️")
-            await bot_message.add_reaction("➡️")
-
-            cache.append(
-                {"id": bot_message.id, "channel": bot_message.channel.id, "post_num": post_num, "posts": posts})
-            if len(cache) > 2:
-                old_post = cache.pop(0)
-                old_channel = client.get_channel(old_post["channel"])
-                old_message = await old_channel.fetch_message(old_post["id"])
-                await old_message.remove_reaction("⬅️", client.user)
-                await old_message.remove_reaction("➡️", client.user)
-
+        if len(posts) == 0:
+            await channel.send("no images found")
             return
 
-        await channel.send("no images found")
+        post = posts[0]
+        image_url = post["file"]["url"]
+        image_description = post["description"]
+
+        if image_description and image_description != "" and len(image_description) < 500 and not url_regex.search(image_description):
+            await channel.send(image_description)
+        bot_message = await channel.send(image_url)
+        await bot_message.add_reaction("⬅️")
+        await bot_message.add_reaction("➡️")
+
+        cache.append(
+            {"message": bot_message, "pos": 0, "posts": posts})
+        if len(cache) > 10:
+            old_post = cache.pop(0)
+            old_message = old_post["message"]
+            await old_message.remove_reaction("⬅️", client.user)
+            await old_message.remove_reaction("➡️", client.user)
+
         return
 
 
 @client.event
 async def on_reaction_add(reaction, user):
-    pass
+    message = reaction.message
+    if user == client.user:
+        return
+    if message.author == client.user and message in map(lambda a: a["message"], cache):
+        emoji = reaction.emoji
+        if emoji not in ("⬅️", "➡️"):
+            return
+        await message.remove_reaction(reaction.emoji, user)
+        # change image
+        message_num = 0
+        for p in cache:
+            if message == p["message"]:
+                break
+            message_num += 1
+        posts = cache[message_num]["posts"]
+        pos = cache[message_num]["pos"]
+        if emoji == "⬅️":
+            pos -= 1
+        else:
+            pos += 1
+        pos = clamp(pos, 0, len(posts)-1)
+
+        cache[message_num]["pos"] = pos
+
+        image_url = posts[pos]["file"]["url"]
+
+        await message.edit(content=image_url)
+
 
 client.run(secrets.token)
