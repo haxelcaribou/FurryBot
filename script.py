@@ -1,32 +1,32 @@
 #!/usr/bin/python3
 
-import discord
 import secrets
-import blocklist
-import requests
 import re
+import requests
+import discord
+import blocklist
 
 # TODO:
-# see more than most recent image
 # add way to look at image data (post artist?)
 # tag search
 # better description display
 # rate limiting
 
-client = discord.Client()
+CLIENT = discord.Client()
 
 
-url = "https://e621.net/posts.json"
-headers = {
-    # If you are running this yourself I would change the User_Agent to include your main e621 username
+URL = "https://e621.net/posts.json"
+HEADERS = {
+    # If you are running this yourself
+    # I would change the User_Agent to include your main e621 username
     "User-Agent": "DiscordFurryBot V1.2",
 }
 
-url_regex = re.compile(
+URL_REGEX = re.compile(
     r"(https?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+)")
 
 
-status = "!~ tags"
+STATUS = "!~ tags"
 
 
 cache = []
@@ -47,15 +47,15 @@ def clamp(num, min_num, max_num):
     return max(min(num, max_num), min_num)
 
 
-@client.event
+@CLIENT.event
 async def on_ready():
-    print('We have logged in as {0.user}'.format(client))
-    await client.change_presence(activity=discord.Game(status))
+    print(f"We have logged in as {CLIENT.user}")
+    await CLIENT.change_presence(activity=discord.Game(STATUS))
 
 
-@client.event
+@CLIENT.event
 async def on_message(user_message):
-    if user_message.author == client.user:
+    if user_message.author == CLIENT.user:
         return
 
     channel = user_message.channel
@@ -76,16 +76,16 @@ async def on_message(user_message):
             for tag in blocklist.nsfw_only:
                 params["tags"] += " -" + tag
 
-        r = requests.get(url, params=params, headers=headers,
+        response = requests.get(URL, params=params, headers=HEADERS,
                          auth=(secrets.login, secrets.api_key))
 
-        if r.status_code != 200:
-            await channel.send("Error: recieved status code: " + str(r.status_code))
+        if response.status_code != 200:
+            await channel.send("Error: recieved status code: " + str(response.status_code))
             return
 
-        response = r.json()
+        response_json = response.json()
 
-        posts = response["posts"]
+        posts = response_json["posts"]
 
         posts = list(filter(check_post, posts))
 
@@ -95,10 +95,7 @@ async def on_message(user_message):
 
         post = posts[0]
         image_url = post["file"]["url"]
-        image_description = post["description"]
 
-        if image_description and image_description != "" and len(image_description) < 500 and not url_regex.search(image_description):
-            await channel.send(image_description)
         bot_message = await channel.send(image_url)
         await bot_message.add_reaction("⬅️")
         await bot_message.add_reaction("➡️")
@@ -108,26 +105,26 @@ async def on_message(user_message):
         if len(cache) > 10:
             old_post = cache.pop(0)
             old_message = old_post["message"]
-            await old_message.remove_reaction("⬅️", client.user)
-            await old_message.remove_reaction("➡️", client.user)
+            await old_message.remove_reaction("⬅️", CLIENT.user)
+            await old_message.remove_reaction("➡️", CLIENT.user)
 
         return
 
 
-@client.event
+@CLIENT.event
 async def on_reaction_add(reaction, user):
     message = reaction.message
-    if user == client.user:
+    if user == CLIENT.user:
         return
-    if message.author == client.user and message in map(lambda a: a["message"], cache):
+    if message.author == CLIENT.user and message in map(lambda a: a["message"], cache):
         emoji = reaction.emoji
         if emoji not in ("⬅️", "➡️"):
             return
         await message.remove_reaction(reaction.emoji, user)
         # change image
         message_num = 0
-        for p in cache:
-            if message == p["message"]:
+        for info in cache:
+            if message == info["message"]:
                 break
             message_num += 1
         posts = cache[message_num]["posts"]
@@ -145,4 +142,4 @@ async def on_reaction_add(reaction, user):
         await message.edit(content=image_url)
 
 
-client.run(secrets.token)
+CLIENT.run(secrets.token)
