@@ -7,6 +7,7 @@ import discord
 import blocklist
 
 # TODO:
+# graceful exit
 # add way to look at image data (post artist?)
 # tag search
 # better description display
@@ -77,7 +78,7 @@ async def on_message(user_message):
                 params["tags"] += " -" + tag
 
         response = requests.get(URL, params=params, headers=HEADERS,
-                         auth=(secrets.login, secrets.api_key))
+                                auth=(secrets.login, secrets.api_key))
 
         if response.status_code != 200:
             await channel.send("Error: recieved status code: " + str(response.status_code))
@@ -137,13 +138,20 @@ async def on_reaction_add(reaction, user):
             pos -= 1
         else:
             pos += 1
-        pos = clamp(pos, 0, len(posts)-1)
+        pos = clamp(pos, 0, len(posts) - 1)
 
         cache[message_num]["pos"] = pos
 
         image_url = posts[pos]["file"]["url"]
 
         await message.edit(content=image_url)
+
+
+async def cleanup():
+    for info in cache:
+        message = info["message"]
+        await message.remove_reaction("⬅️", CLIENT.user)
+        await message.remove_reaction("➡️", CLIENT.user)
 
 
 CLIENT.run(secrets.token)
