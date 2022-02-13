@@ -1,10 +1,11 @@
-#!/usr/bin/python3
+#!/usr/bin/python
 
 import secrets
 import re
 import requests
 import discord
 import blocklist
+import sys
 
 # TODO:
 # graceful exit
@@ -30,7 +31,7 @@ URL_REGEX = re.compile(
 STATUS = "!~ tags"
 
 
-cache = []
+CACHE = []
 
 
 # returns true if any tag is on the blocklist
@@ -105,10 +106,10 @@ async def on_message(user_message):
         await bot_message.add_reaction("⬅️")
         await bot_message.add_reaction("➡️")
 
-        cache.append(
+        CACHE.append(
             {"message": bot_message, "pos": 0, "posts": posts})
-        if len(cache) > 10:
-            old_post = cache.pop(0)
+        if len(CACHE) > 10:
+            old_post = CACHE.pop(0)
             old_message = old_post["message"]
             await old_message.remove_reaction("⬅️", CLIENT.user)
             await old_message.remove_reaction("➡️", CLIENT.user)
@@ -121,26 +122,26 @@ async def on_reaction_add(reaction, user):
     message = reaction.message
     if user == CLIENT.user:
         return
-    if message.author == CLIENT.user and message in map(lambda a: a["message"], cache):
+    if message.author == CLIENT.user and message in map(lambda a: a["message"], CACHE):
         emoji = reaction.emoji
         if emoji not in ("⬅️", "➡️"):
             return
         await message.remove_reaction(reaction.emoji, user)
         # change image
         message_num = 0
-        for info in cache:
+        for info in CACHE:
             if message == info["message"]:
                 break
             message_num += 1
-        posts = cache[message_num]["posts"]
-        pos = cache[message_num]["pos"]
+        posts = CACHE[message_num]["posts"]
+        pos = CACHE[message_num]["pos"]
         if emoji == "⬅️":
             pos -= 1
         else:
             pos += 1
         pos = clamp(pos, 0, len(posts) - 1)
 
-        cache[message_num]["pos"] = pos
+        CACHE[message_num]["pos"] = pos
 
         image_url = posts[pos]["file"]["url"]
 
@@ -148,10 +149,13 @@ async def on_reaction_add(reaction, user):
 
 
 async def cleanup():
-    for info in cache:
+    print("Cleaning up")
+    for info in CACHE:
         message = info["message"]
         await message.remove_reaction("⬅️", CLIENT.user)
         await message.remove_reaction("➡️", CLIENT.user)
+    print("Exiting")
+    sys.exit()
 
 
 CLIENT.run(secrets.token)
