@@ -1,11 +1,13 @@
 #!/usr/bin/python
 
 import secrets
+import asyncio
 import re
+import signal
+import sys
 import requests
 import discord
 import blocklist
-import sys
 
 # TODO:
 # graceful exit
@@ -154,8 +156,21 @@ async def cleanup():
         message = info["message"]
         await message.remove_reaction("⬅️", CLIENT.user)
         await message.remove_reaction("➡️", CLIENT.user)
-    print("Exiting")
+
+def terminate_process(signum, frame):
     sys.exit()
 
+signal.signal(signal.SIGTERM, terminate_process)
 
-CLIENT.run(secrets.token)
+# TODO: remove deprecated function
+loop = asyncio.get_event_loop()
+
+try:
+    loop.run_until_complete(CLIENT.start(secrets.token))
+except (KeyboardInterrupt, SystemExit):
+    loop.run_until_complete(cleanup())
+    loop.run_until_complete(CLIENT.close())
+    # cancel all tasks lingering
+finally:
+    loop.close()
+    print("Exiting")
