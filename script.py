@@ -8,7 +8,6 @@ import sys
 import requests
 import discord
 import blocklist
-from functools import lru_cache
 
 # TODO:
 # graceful exit
@@ -127,7 +126,7 @@ async def on_message(user_message):
 
         CACHE.append(
             {"message": bot_message, "pos": 0, "posts": posts})
-        if len(CACHE) > 10:
+        if len(CACHE) > 32:
             old_post = CACHE.pop(0)
             old_message = old_post["message"]
             await remove_buttons(old_message)
