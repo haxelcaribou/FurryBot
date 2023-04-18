@@ -8,6 +8,7 @@ import sys
 import requests
 import discord
 import blocklist
+from functools import lru_cache
 
 # TODO:
 # graceful exit
@@ -21,8 +22,7 @@ CLIENT = discord.Client()
 
 URL = "https://e621.net/posts.json"
 HEADERS = {
-    # If you are running this yourself
-    # I would change the User_Agent to include your main e621 username
+    # If you are running this yourself change the User_Agent to include your main e621 username
     "User-Agent": "DiscordFurryBot V1.2",
 }
 
@@ -32,9 +32,14 @@ URL_REGEX = re.compile(
 
 STATUS = "!~ tags"
 
-
 CACHE = []
 
+
+class HTTP404Exception(Exception):
+    pass
+
+def clamp(num, min_num, max_num):
+    return max(min(num, max_num), min_num)
 
 # returns true if any tag is on the blocklist
 def check_post(post):
@@ -46,9 +51,32 @@ def check_post(post):
         return True
     return False
 
+@lru_cache
+def get_posts(tags="", is_nsfw=False):
 
-def clamp(num, min_num, max_num):
-    return max(min(num, max_num), min_num)
+    params = {
+        "limit": 32,
+        "tags": tags
+    }
+
+    params["tags"] += " -huge_filesize -flash score:>=0"
+
+    if not is_nsfw:
+        params["tags"] += " rating:s status:active tagcount:>15"
+        for tag in blocklist.nsfw_only:
+            params["tags"] += " -" + tag
+
+    response = requests.get(URL, params=params, headers=HEADERS,
+                                auth=(secrets.login, secrets.api_key))
+
+    if response.status_code != 200:
+        HTTP404Exception(str(response.status_code))
+
+    response_json = response.json()
+
+    posts = response_json["posts"]
+
+    return posts
 
 
 @CLIENT.event
@@ -68,28 +96,11 @@ async def on_message(user_message):
 
     if message_content.startswith("!~ "):
 
-        params = {
-            "limit": 32,
-            "tags": message_content[3:]
-        }
-
-        params["tags"] += " -huge_filesize -flash score:>=0"
-
-        if not channel.is_nsfw():
-            params["tags"] += " rating:s status:active tagcount:>15"
-            for tag in blocklist.nsfw_only:
-                params["tags"] += " -" + tag
-
-        response = requests.get(URL, params=params, headers=HEADERS,
-                                auth=(secrets.login, secrets.api_key))
-
-        if response.status_code != 200:
+        try:
+            posts = get_posts(message_content[3:], channel.is_nsfw())
+        except HTTP404Exception:
             await channel.send("Error: recieved status code: " + str(response.status_code))
             return
-
-        response_json = response.json()
-
-        posts = response_json["posts"]
 
         filtered = []
         for post in posts:
@@ -117,7 +128,6 @@ async def on_message(user_message):
             await old_message.remove_reaction("➡️", CLIENT.user)
 
         return
-
 
 @CLIENT.event
 async def on_reaction_add(reaction, user):
@@ -151,7 +161,7 @@ async def on_reaction_add(reaction, user):
 
 
 async def cleanup():
-    print("Cleaning up")
+    print("\nCleaning up")
     for info in CACHE:
         message = info["message"]
         await message.remove_reaction("⬅️", CLIENT.user)
@@ -174,3 +184,5 @@ except (KeyboardInterrupt, SystemExit):
 finally:
     loop.close()
     print("Exiting")
+
+CACHE = []
