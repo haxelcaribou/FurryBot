@@ -16,7 +16,13 @@ import blocklist
 # better description display
 # rate limiting
 
-CLIENT = discord.Client()
+
+intents = discord.Intents.default()
+intents.messages = True
+intents.message_content = True
+intents.reactions = True
+
+CLIENT = discord.Client(intents=intents)
 
 
 URL = "https://e621.net/posts.json"
@@ -121,6 +127,10 @@ async def on_message(user_message):
         post = posts[0]
         image_url = post["file"]["url"]
 
+        # view = discord.ui.View()
+        # style = discord.ButtonStyle.primary()
+        # button = discord.ui.Button(style=style, label="test", disabled=False)
+        # view.add_item(item=button)
         bot_message = await channel.send(image_url)
         await add_buttons(bot_message)
 
