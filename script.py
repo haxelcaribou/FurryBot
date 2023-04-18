@@ -77,6 +77,14 @@ def get_posts(tags="", is_nsfw=False):
 
     return posts
 
+async def add_buttons(message):
+    await message.add_reaction("⬅️")
+    await message.add_reaction("➡️")
+
+async def remove_buttons(message):
+    await message.remove_reaction("⬅️", CLIENT.user)
+    await message.remove_reaction("➡️", CLIENT.user)
+
 
 @CLIENT.event
 async def on_ready():
@@ -115,16 +123,14 @@ async def on_message(user_message):
         image_url = post["file"]["url"]
 
         bot_message = await channel.send(image_url)
-        await bot_message.add_reaction("⬅️")
-        await bot_message.add_reaction("➡️")
+        await add_buttons(bot_message)
 
         CACHE.append(
             {"message": bot_message, "pos": 0, "posts": posts})
         if len(CACHE) > 10:
             old_post = CACHE.pop(0)
             old_message = old_post["message"]
-            await old_message.remove_reaction("⬅️", CLIENT.user)
-            await old_message.remove_reaction("➡️", CLIENT.user)
+            await remove_buttons(old_message)
 
         return
 
@@ -161,10 +167,9 @@ async def on_reaction_add(reaction, user):
 
 async def cleanup():
     print("\nCleaning up")
-    for info in CACHE:
-        message = info["message"]
-        await message.remove_reaction("⬅️", CLIENT.user)
-        await message.remove_reaction("➡️", CLIENT.user)
+    for post in CACHE:
+        message = post["message"]
+        await remove_buttons(message)
 
 def terminate_process(signum, frame):
     sys.exit()
