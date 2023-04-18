@@ -41,17 +41,16 @@ class HTTP404Exception(Exception):
 def clamp(num, min_num, max_num):
     return max(min(num, max_num), min_num)
 
-# returns true if any tag is on the blocklist
+# returns false if any tag is on the blocklist
 def check_post(post):
     tags = post["tags"]["general"]
     for tag in tags:
         if tag in blocklist.general_tags:
-            return True
+            return False
     if post["score"]["total"] < 0:
-        return True
-    return False
+        return False
+    return True
 
-@lru_cache
 def get_posts(tags="", is_nsfw=False):
 
     params = {
@@ -104,7 +103,7 @@ async def on_message(user_message):
 
         filtered = []
         for post in posts:
-            if not check_post(post):
+            if check_post(post):
                 filtered.append(post)
         posts = filtered
 
