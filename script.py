@@ -130,7 +130,8 @@ async def on_ready():
 
 @CLIENT.event
 async def on_message(user_message):
-    if user_message.author == CLIENT.user:
+    author = user_message.author
+    if author == CLIENT.user:
         return
 
     channel = user_message.channel
@@ -141,8 +142,10 @@ async def on_message(user_message):
 
         tags = message_content[3:]
 
+        is_nsfw = channel.is_nsfw()
+
         try:
-            posts = get_posts(tags, channel.is_nsfw())
+            posts = get_posts(tags, is_nsfw)
         except HTTP404Exception:
             await channel.send(f"Error: recieved status code: {response.status_code}")
             return
@@ -157,11 +160,18 @@ async def on_message(user_message):
             await channel.send("No images found")
             return
 
-        image_url = posts[0]["file"]["url"]
+        post = posts[0]
 
         view = ButtonRow()
-        embed = discord.Embed(title=tags, description=f"Image 1 of {len(posts)}", url=f"https://e621.net/posts/{posts[0]['id']}")
-        embed.set_image(url=image_url)
+        embed = discord.Embed(title=tags, url=f"https://e621.net/posts/{post['id']}")
+        # embed.description = post["description"]
+        embed.set_image(url=post["file"]["url"])
+        embed.set_footer(text=f"Image 1 of {len(posts)}")
+        embed.set_author(name=author, icon_url=author.avatar.url)
+        if is_nsfw:
+            embed.color = discord.Color.brand_red()
+        else:
+            embed.color = discord.Color.brand_green()
         bot_message = await channel.send(embed=embed, view=view)
 
         CACHE.append({"message": bot_message, "pos": 0,
@@ -211,11 +221,12 @@ async def change_image(message, to_left=False, to_end=False):
 
     CACHE[message_num]["pos"] = pos
 
-    image_url = posts[pos]["file"]["url"]
+    post = posts[pos]
 
-    embed.set_image(url=image_url)
-    embed.description = f"Image {pos+1} of {len(posts)}"
-    embed.url = f"https://e621.net/posts/{posts[pos]['id']}"
+    embed.set_image(url=post["file"]["url"])
+    embed.set_footer(text=f"Image {pos+1} of {len(posts)}")
+    embed.url = f"https://e621.net/posts/{post['id']}"
+    # embed.description = post["description"]
 
     await message.edit(embed=embed, view=view)
 
