@@ -13,7 +13,6 @@ import blocklist
 # graceful exit
 # add way to look at image data (post artist?)
 # tag search
-# better description display
 # rate limiting
 
 
@@ -89,7 +88,6 @@ def check_post(post):
 
 
 def get_posts(tags="", is_nsfw=False):
-
     params = {
         "limit": NUM_IMAGES,
         "tags": tags
@@ -156,13 +154,14 @@ async def on_message(user_message):
             await channel.send("no images found")
             return
 
-        post = posts[0]
-        image_url = post["file"]["url"]
+        image_url = posts[0]["file"]["url"]
 
         view = ButtonRow()
-        bot_message = await channel.send(image_url, view=view)
+        embed = discord.Embed(title=message_content, description="Image 1 of "+str(len(posts)), url="https://e621.net/posts/" + str(posts[0]["id"]))
+        embed.set_image(url=image_url)
+        bot_message = await channel.send(embed=embed, view=view)
 
-        CACHE.append({"message": bot_message, "pos": 0, "posts": posts, "view": view})
+        CACHE.append({"message": bot_message, "pos": 0, "posts": posts, "view": view, "embed":embed})
         if len(CACHE) > 32:
             old_post = CACHE.pop(0)
             await disable_buttons(old_post)
@@ -179,6 +178,7 @@ async def change_image(message, to_left=False, to_end=False):
     posts = CACHE[message_num]["posts"]
     pos = CACHE[message_num]["pos"]
     view = CACHE[message_num]["view"]
+    embed = CACHE[message_num]["embed"]
     if to_end:
         if to_left:
             pos = 0
@@ -207,7 +207,11 @@ async def change_image(message, to_left=False, to_end=False):
 
     image_url = posts[pos]["file"]["url"]
 
-    await message.edit(content=image_url, view=view)
+    embed.set_image(url=image_url)
+    embed.description = "Image " + str(pos+1) + " of " + str(len(posts))
+    embed.url = "https://e621.net/posts/" + str(posts[pos]["id"])
+
+    await message.edit(embed=embed, view=view)
 
 
 async def cleanup():
@@ -234,4 +238,3 @@ except (KeyboardInterrupt, SystemExit):
 finally:
     loop.close()
     print("Exiting")
-    CACHE = []
