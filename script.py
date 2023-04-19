@@ -139,8 +139,10 @@ async def on_message(user_message):
 
     if message_content.startswith("!~ "):
 
+        tags = message_content[3:]
+
         try:
-            posts = get_posts(message_content[3:], channel.is_nsfw())
+            posts = get_posts(tags, channel.is_nsfw())
         except HTTP404Exception:
             await channel.send(f"Error: recieved status code: {response.status_code}")
             return
@@ -158,7 +160,7 @@ async def on_message(user_message):
         image_url = posts[0]["file"]["url"]
 
         view = ButtonRow()
-        embed = discord.Embed(title=message_content, description=f"Image 1 of {len(posts)}", url="https://e621.net/posts/{0}".format(posts[0]["id"]))
+        embed = discord.Embed(title=tags, description=f"Image 1 of {len(posts)}", url=f"https://e621.net/posts/{posts[0]['id']}")
         embed.set_image(url=image_url)
         bot_message = await channel.send(embed=embed, view=view)
 
@@ -182,6 +184,7 @@ async def change_image(message, to_left=False, to_end=False):
     pos = item["pos"]
     view = item["view"]
     embed = item["embed"]
+
     if to_end:
         if to_left:
             pos = 0
@@ -212,7 +215,7 @@ async def change_image(message, to_left=False, to_end=False):
 
     embed.set_image(url=image_url)
     embed.description = f"Image {pos+1} of {len(posts)}"
-    embed.url = "https://e621.net/posts/{0}".format(posts[pos]["id"])
+    embed.url = f"https://e621.net/posts/{posts[pos]['id']}"
 
     await message.edit(embed=embed, view=view)
 
