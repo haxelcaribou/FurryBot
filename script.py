@@ -34,6 +34,7 @@ HEADERS = {
 URL_REGEX = re.compile(
     r"(https?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+)")
 
+NUM_IMAGES = 32
 
 STATUS = "!~ tags"
 
@@ -42,6 +43,35 @@ CACHE = []
 
 class HTTP404Exception(Exception):
     pass
+
+
+class ButtonRow(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    active_style = discord.ButtonStyle.blurple
+    inactive_style = discord.ButtonStyle.grey
+
+    @discord.ui.button(style=inactive_style, label="First", disabled=False, custom_id="first_button")
+    async def first_image(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await change_image(interaction.message, to_left=True, to_end=True)
+        await interaction.response.defer()
+
+    @discord.ui.button(style=inactive_style, label="Prev", emoji="⬅️", disabled=False, custom_id="prev_button")
+    async def prev_image(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await change_image(interaction.message, to_left=True)
+        await interaction.response.defer()
+
+    @discord.ui.button(style=active_style, label="Next", emoji="➡️", disabled=False, custom_id="next_button")
+    async def next_image(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await change_image(interaction.message, to_left=False)
+        await interaction.response.defer()
+
+    @discord.ui.button(style=active_style, label="Last", disabled=False, custom_id="last_button")
+    async def last_image(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await change_image(interaction.message, to_left=False, to_end=True)
+        await interaction.response.defer()
+
 
 def clamp(num, min_num, max_num):
     return max(min(num, max_num), min_num)
@@ -56,10 +86,11 @@ def check_post(post):
         return False
     return True
 
+
 def get_posts(tags="", is_nsfw=False):
 
     params = {
-        "limit": 32,
+        "limit": NUM_IMAGES,
         "tags": tags
     }
 
@@ -71,7 +102,7 @@ def get_posts(tags="", is_nsfw=False):
             params["tags"] += " -" + tag
 
     response = requests.get(URL, params=params, headers=HEADERS,
-                                auth=(secrets.login, secrets.api_key))
+                            auth=(secrets.login, secrets.api_key))
 
     if response.status_code != 200:
         HTTP404Exception(str(response.status_code))
@@ -81,14 +112,6 @@ def get_posts(tags="", is_nsfw=False):
     posts = response_json["posts"]
 
     return posts
-
-async def add_buttons(message):
-    await message.add_reaction("⬅️")
-    await message.add_reaction("➡️")
-
-async def remove_buttons(message):
-    await message.remove_reaction("⬅️", CLIENT.user)
-    await message.remove_reaction("➡️", CLIENT.user)
 
 
 @CLIENT.event
@@ -128,11 +151,14 @@ async def on_message(user_message):
         image_url = post["file"]["url"]
 
         # view = discord.ui.View()
-        # style = discord.ButtonStyle.primary()
-        # button = discord.ui.Button(style=style, label="test", disabled=False)
+        # style = discord.ButtonStyle.primary
+        # button = discord.ui.Button(style=style, label="prev", emoji="⬅️", disabled=False)
+        # button.callback = lambda i : await change_image(i.message, to_left=True)
         # view.add_item(item=button)
-        bot_message = await channel.send(image_url)
-        await add_buttons(bot_message)
+        # button = discord.ui.Button(style=style, label="next", emoji="➡️", disabled=False)
+        # view.add_item(item=button)
+        # button.callback = lambda i : await change_image(i.message, to_left=False)
+        bot_message = await channel.send(image_url, view=ButtonRow())
 
         CACHE.append(
             {"message": bot_message, "pos": 0, "posts": posts})
@@ -143,45 +169,41 @@ async def on_message(user_message):
 
         return
 
-@CLIENT.event
-async def on_reaction_add(reaction, user):
-    message = reaction.message
-    if user == CLIENT.user:
-        return
-    if message.author == CLIENT.user and message in map(lambda a: a["message"], CACHE):
-        emoji = reaction.emoji
-        if emoji not in ("⬅️", "➡️"):
-            return
-        await message.remove_reaction(reaction.emoji, user)
-        # change image
-        message_num = 0
-        for info in CACHE:
-            if message == info["message"]:
-                break
-            message_num += 1
-        posts = CACHE[message_num]["posts"]
-        pos = CACHE[message_num]["pos"]
-        if emoji == "⬅️":
+
+async def change_image(message, to_left=False, to_end=False):
+    message_num = 0
+    for info in CACHE:
+        if message == info["message"]:
+            break
+        message_num += 1
+    posts = CACHE[message_num]["posts"]
+    pos = CACHE[message_num]["pos"]
+    if to_end:
+        if to_left:
+            pos = 0
+        else:
+            pos = len(pos) - 1
+    else:
+        if to_left:
             pos -= 1
         else:
             pos += 1
         pos = clamp(pos, 0, len(posts) - 1)
 
-        CACHE[message_num]["pos"] = pos
+    CACHE[message_num]["pos"] = pos
 
-        image_url = posts[pos]["file"]["url"]
+    image_url = posts[pos]["file"]["url"]
 
-        await message.edit(content=image_url)
+    await message.edit(content=image_url)
 
 
 async def cleanup():
     print("\nCleaning up")
-    for post in CACHE:
-        message = post["message"]
-        await remove_buttons(message)
+
 
 def terminate_process(signum, frame):
     sys.exit()
+
 
 signal.signal(signal.SIGTERM, terminate_process)
 
