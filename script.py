@@ -52,29 +52,30 @@ class ButtonRow(discord.ui.View):
     active_style = discord.ButtonStyle.blurple
     inactive_style = discord.ButtonStyle.grey
 
-    @discord.ui.button(style=inactive_style, label="First", disabled=False, custom_id="first_button")
+    @discord.ui.button(style=inactive_style, label="First", disabled=True, custom_id="first_button")
     async def first_image(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
         await change_image(interaction.message, to_left=True, to_end=True)
-        await interaction.response.defer()
 
-    @discord.ui.button(style=inactive_style, label="Prev", emoji="⬅️", disabled=False, custom_id="prev_button")
+    @discord.ui.button(style=inactive_style, label="Prev", emoji="⬅️", disabled=True, custom_id="prev_button")
     async def prev_image(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await change_image(interaction.message, to_left=True)
         await interaction.response.defer()
+        await change_image(interaction.message, to_left=True)
 
     @discord.ui.button(style=active_style, label="Next", emoji="➡️", disabled=False, custom_id="next_button")
     async def next_image(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await change_image(interaction.message, to_left=False)
         await interaction.response.defer()
+        await change_image(interaction.message, to_left=False)
 
     @discord.ui.button(style=active_style, label="Last", disabled=False, custom_id="last_button")
     async def last_image(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await change_image(interaction.message, to_left=False, to_end=True)
         await interaction.response.defer()
+        await change_image(interaction.message, to_left=False, to_end=True)
 
 
 def clamp(num, min_num, max_num):
     return max(min(num, max_num), min_num)
+
 
 # returns false if any tag is on the blocklist
 def check_post(post):
@@ -114,6 +115,14 @@ def get_posts(tags="", is_nsfw=False):
     return posts
 
 
+async def disable_buttons(post):
+    message = post["message"]
+    view = post["view"]
+    for button in view.children:
+        button.disabled = True
+    await message.edit(view=view)
+
+
 @CLIENT.event
 async def on_ready():
     print(f"We have logged in as {CLIENT.user}")
@@ -150,22 +159,13 @@ async def on_message(user_message):
         post = posts[0]
         image_url = post["file"]["url"]
 
-        # view = discord.ui.View()
-        # style = discord.ButtonStyle.primary
-        # button = discord.ui.Button(style=style, label="prev", emoji="⬅️", disabled=False)
-        # button.callback = lambda i : await change_image(i.message, to_left=True)
-        # view.add_item(item=button)
-        # button = discord.ui.Button(style=style, label="next", emoji="➡️", disabled=False)
-        # view.add_item(item=button)
-        # button.callback = lambda i : await change_image(i.message, to_left=False)
-        bot_message = await channel.send(image_url, view=ButtonRow())
+        view = ButtonRow()
+        bot_message = await channel.send(image_url, view=view)
 
-        CACHE.append(
-            {"message": bot_message, "pos": 0, "posts": posts})
+        CACHE.append({"message": bot_message, "pos": 0, "posts": posts, "view": view})
         if len(CACHE) > 32:
             old_post = CACHE.pop(0)
-            old_message = old_post["message"]
-            await remove_buttons(old_message)
+            await disable_buttons(old_post)
 
         return
 
@@ -178,11 +178,12 @@ async def change_image(message, to_left=False, to_end=False):
         message_num += 1
     posts = CACHE[message_num]["posts"]
     pos = CACHE[message_num]["pos"]
+    view = CACHE[message_num]["view"]
     if to_end:
         if to_left:
             pos = 0
         else:
-            pos = len(pos) - 1
+            pos = len(posts) - 1
     else:
         if to_left:
             pos -= 1
@@ -190,15 +191,29 @@ async def change_image(message, to_left=False, to_end=False):
             pos += 1
         pos = clamp(pos, 0, len(posts) - 1)
 
+    for button in view.children:
+        button.disabled = False
+    
+    if pos == 0:
+        for button in view.children:
+            if button.custom_id == "first_button" or button.custom_id == "prev_button":
+                button.disabled = True
+    elif pos == len(posts) - 1:
+        for button in view.children:
+            if button.custom_id == "next_button" or button.custom_id == "last_button":
+                button.disabled = True
+
     CACHE[message_num]["pos"] = pos
 
     image_url = posts[pos]["file"]["url"]
 
-    await message.edit(content=image_url)
+    await message.edit(content=image_url, view=view)
 
 
 async def cleanup():
     print("\nCleaning up")
+    for item in CACHE:
+        await disable_buttons(item)
 
 
 def terminate_process(signum, frame):
@@ -207,7 +222,7 @@ def terminate_process(signum, frame):
 
 signal.signal(signal.SIGTERM, terminate_process)
 
-# TODO: remove deprecated function
+
 loop = asyncio.get_event_loop()
 
 try:
@@ -219,5 +234,4 @@ except (KeyboardInterrupt, SystemExit):
 finally:
     loop.close()
     print("Exiting")
-
-CACHE = []
+    CACHE = []
