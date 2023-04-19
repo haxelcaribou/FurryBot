@@ -14,6 +14,7 @@ import blocklist
 # add way to look at image data (post artist?)
 # tag search
 # rate limiting
+# allow deleting of messages
 
 
 intents = discord.Intents.default()
@@ -24,18 +25,18 @@ intents.reactions = True
 CLIENT = discord.Client(intents=intents)
 
 
-URL = "https://e621.net/posts.json"
+NUM_IMAGES = 32
+
+STATUS = "!~ tags"
+
 HEADERS = {
     # If you are running this yourself change the User_Agent to include your main e621 username
     "User-Agent": "DiscordFurryBot V1.2",
 }
 
+
 URL_REGEX = re.compile(
     r"(https?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+)")
-
-NUM_IMAGES = 32
-
-STATUS = "!~ tags"
 
 CACHE = []
 
@@ -100,7 +101,7 @@ def get_posts(tags="", is_nsfw=False):
         for tag in blocklist.nsfw_only:
             params["tags"] += " -" + tag
 
-    response = requests.get(URL, params=params, headers=HEADERS,
+    response = requests.get("https://e621.net/posts.json", params=params, headers=HEADERS,
                             auth=(secrets.login, secrets.api_key))
 
     if response.status_code != 200:
@@ -141,7 +142,7 @@ async def on_message(user_message):
         try:
             posts = get_posts(message_content[3:], channel.is_nsfw())
         except HTTP404Exception:
-            await channel.send("Error: recieved status code: " + str(response.status_code))
+            await channel.send(f"Error: recieved status code: {response.status_code}")
             return
 
         filtered = []
@@ -151,17 +152,18 @@ async def on_message(user_message):
         posts = filtered
 
         if len(posts) == 0:
-            await channel.send("no images found")
+            await channel.send("No images found")
             return
 
         image_url = posts[0]["file"]["url"]
 
         view = ButtonRow()
-        embed = discord.Embed(title=message_content, description="Image 1 of "+str(len(posts)), url="https://e621.net/posts/" + str(posts[0]["id"]))
+        embed = discord.Embed(title=message_content, description=f"Image 1 of {len(posts)}", url="https://e621.net/posts/{0}".format(posts[0]["id"]))
         embed.set_image(url=image_url)
         bot_message = await channel.send(embed=embed, view=view)
 
-        CACHE.append({"message": bot_message, "pos": 0, "posts": posts, "view": view, "embed":embed})
+        CACHE.append({"message": bot_message, "pos": 0,
+                     "posts": posts, "view": view, "embed": embed})
         if len(CACHE) > 32:
             old_post = CACHE.pop(0)
             await disable_buttons(old_post)
@@ -175,10 +177,11 @@ async def change_image(message, to_left=False, to_end=False):
         if message == info["message"]:
             break
         message_num += 1
-    posts = CACHE[message_num]["posts"]
-    pos = CACHE[message_num]["pos"]
-    view = CACHE[message_num]["view"]
-    embed = CACHE[message_num]["embed"]
+    item = CACHE[message_num]
+    posts = item["posts"]
+    pos = item["pos"]
+    view = item["view"]
+    embed = item["embed"]
     if to_end:
         if to_left:
             pos = 0
@@ -193,14 +196,14 @@ async def change_image(message, to_left=False, to_end=False):
 
     for button in view.children:
         button.disabled = False
-    
+
     if pos == 0:
         for button in view.children:
-            if button.custom_id == "first_button" or button.custom_id == "prev_button":
+            if button.custom_id in ("first_button", "prev_button"):
                 button.disabled = True
     elif pos == len(posts) - 1:
         for button in view.children:
-            if button.custom_id == "next_button" or button.custom_id == "last_button":
+            if button.custom_id in ("next_button", "last_button"):
                 button.disabled = True
 
     CACHE[message_num]["pos"] = pos
@@ -208,8 +211,8 @@ async def change_image(message, to_left=False, to_end=False):
     image_url = posts[pos]["file"]["url"]
 
     embed.set_image(url=image_url)
-    embed.description = "Image " + str(pos+1) + " of " + str(len(posts))
-    embed.url = "https://e621.net/posts/" + str(posts[pos]["id"])
+    embed.description = f"Image {pos+1} of {len(posts)}"
+    embed.url = "https://e621.net/posts/{0}".format(posts[pos]["id"])
 
     await message.edit(embed=embed, view=view)
 
