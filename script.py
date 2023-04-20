@@ -29,6 +29,7 @@ NUM_IMAGES = 32
 
 STATUS = "!~ tags"
 
+BASE_URL = "https://e621.net/"
 HEADERS = {
     # If you are running this yourself change the User_Agent to include your main e621 username
     "User-Agent": "DiscordFurryBot V1.2",
@@ -38,6 +39,7 @@ HEADERS = {
 URL_REGEX = re.compile(
     r"(https?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+)")
 
+MAX_CACHE_SIZE = 32
 CACHE = []
 
 
@@ -101,7 +103,7 @@ def get_posts(tags="", is_nsfw=False):
         for tag in blocklist.nsfw_only:
             params["tags"] += " -" + tag
 
-    response = requests.get("https://e621.net/posts.json", params=params, headers=HEADERS,
+    response = requests.get(f"{BASE_URL}posts.json", params=params, headers=HEADERS,
                             auth=(secrets.login, secrets.api_key))
 
     if response.status_code != 200:
@@ -163,7 +165,7 @@ async def on_message(user_message):
         post = posts[0]
 
         view = ButtonRow()
-        embed = discord.Embed(title=tags, url=f"https://e621.net/posts/{post['id']}")
+        embed = discord.Embed(title=tags, url=f"{BASE_URL}posts/{post['id']}")
         # embed.description = post["description"]
         embed.set_image(url=post["file"]["url"])
         embed.set_footer(text=f"Image 1 of {len(posts)}")
@@ -176,7 +178,7 @@ async def on_message(user_message):
 
         CACHE.append({"message": bot_message, "pos": 0,
                      "posts": posts, "view": view, "embed": embed})
-        if len(CACHE) > 32:
+        if len(CACHE) > MAX_CACHE_SIZE:
             old_post = CACHE.pop(0)
             await disable_buttons(old_post)
 
@@ -225,7 +227,7 @@ async def change_image(message, to_left=False, to_end=False):
 
     embed.set_image(url=post["file"]["url"])
     embed.set_footer(text=f"Image {pos+1} of {len(posts)}")
-    embed.url = f"https://e621.net/posts/{post['id']}"
+    embed.url = f"{BASE_URL}posts/{post['id']}"
     # embed.description = post["description"]
 
     await message.edit(embed=embed, view=view)
