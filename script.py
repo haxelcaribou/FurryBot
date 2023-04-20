@@ -15,7 +15,6 @@ import logging
 # add way to look at image data (post artist?)
 # tag search
 # rate limiting
-# allow deleting of messages
 
 
 intents = discord.Intents.default()
@@ -35,7 +34,7 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 
-NUM_IMAGES = 32
+MAX_IMAGES = 32
 
 STATUS = "!~ tags"
 
@@ -45,12 +44,11 @@ HEADERS = {
     "User-Agent": "DiscordFurryBot V1.2",
 }
 
-
 URL_REGEX = re.compile(
     r"(https?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+)")
 
 MAX_CACHE_SIZE = 32
-CACHE = []
+cache = []
 
 
 class HTTP404Exception(Exception):
@@ -77,16 +75,30 @@ class ButtonRow(discord.ui.View):
     @discord.ui.button(style=active_style, label="Next", emoji="➡️", disabled=False, custom_id="next_button")
     async def next_image(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
-        await change_image(interaction.message, to_left=False)
+        await change_image(interaction.message)
 
     @discord.ui.button(style=active_style, label="Last", disabled=False, custom_id="last_button")
     async def last_image(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
-        await change_image(interaction.message, to_left=False, to_end=True)
+        await change_image(interaction.message, to_end=True)
+
+    @discord.ui.button(style=discord.ButtonStyle.red, label="Delete", disabled=False, custom_id="delete_message")
+    async def delete_message(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.message.delete()
+        await interaction.response.send_message("Message deleted", ephemeral=True)
 
 
 def clamp(num, min_num, max_num):
     return max(min(num, max_num), min_num)
+
+
+def pos_in_cache(message):
+    i = 0
+    while i < len(cache):
+        if message == cache[i]["message"]:
+            return i
+        i += 1
+    return -1
 
 
 # returns false if any tag is on the blocklist
@@ -102,7 +114,7 @@ def check_post(post):
 
 def get_posts(tags="", is_nsfw=False):
     params = {
-        "limit": NUM_IMAGES,
+        "limit": MAX_IMAGES,
         "tags": tags
     }
 
@@ -139,6 +151,14 @@ async def on_ready():
     print(f"We have logged in as {CLIENT.user}")
     await CLIENT.change_presence(activity=discord.Game(STATUS))
 
+@CLIENT.event
+async def on_message_delete(message):
+    if message.author != CLIENT.user:
+        return
+    cache_pos = pos_in_cache(message)
+    if cache_pos == -1:
+        return
+    cache.pop(cache_pos)
 
 @CLIENT.event
 async def on_message(user_message):
@@ -186,22 +206,20 @@ async def on_message(user_message):
             embed.color = discord.Color.brand_green()
         bot_message = await channel.send(embed=embed, view=view)
 
-        CACHE.append({"message": bot_message, "pos": 0,
+        cache.append({"message": bot_message, "pos": 0,
                      "posts": posts, "view": view, "embed": embed})
-        if len(CACHE) > MAX_CACHE_SIZE:
-            old_post = CACHE.pop(0)
+        if len(cache) > MAX_CACHE_SIZE:
+            old_post = cache.pop(0)
             await disable_buttons(old_post)
 
         return
 
 
 async def change_image(message, to_left=False, to_end=False):
-    message_num = 0
-    for info in CACHE:
-        if message == info["message"]:
-            break
-        message_num += 1
-    item = CACHE[message_num]
+    cache_pos = pos_in_cache(message)
+    if cache_pos == -1:
+        return
+    item = cache[cache_pos]
     posts = item["posts"]
     pos = item["pos"]
     view = item["view"]
@@ -222,6 +240,8 @@ async def change_image(message, to_left=False, to_end=False):
     for button in view.children:
         button.disabled = False
 
+    cache[cache_pos]["pos"] = pos
+
     if pos == 0:
         for button in view.children:
             if button.custom_id in ("first_button", "prev_button"):
@@ -230,8 +250,6 @@ async def change_image(message, to_left=False, to_end=False):
         for button in view.children:
             if button.custom_id in ("next_button", "last_button"):
                 button.disabled = True
-
-    CACHE[message_num]["pos"] = pos
 
     post = posts[pos]
 
@@ -245,7 +263,7 @@ async def change_image(message, to_left=False, to_end=False):
 
 async def cleanup():
     print("\nCleaning up")
-    for item in CACHE:
+    for item in cache:
         await disable_buttons(item)
 
 
