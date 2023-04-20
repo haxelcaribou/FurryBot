@@ -8,6 +8,7 @@ import sys
 import requests
 import discord
 import blocklist
+import logging
 
 # TODO:
 # graceful exit
@@ -23,6 +24,15 @@ intents.message_content = True
 intents.reactions = True
 
 CLIENT = discord.Client(intents=intents)
+
+# enable logging
+logger = logging.getLogger('discord')
+logger.setLevel(logging.INFO)
+handler = logging.FileHandler(filename="discord.log", encoding="utf-8", mode="w")
+dt_fmt = '%Y-%m-%d %H:%M:%S'
+formatter = logging.Formatter('[{asctime}] [{levelname:<8}] {name}: {message}', dt_fmt, style='{')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 
 NUM_IMAGES = 32
