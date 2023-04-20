@@ -4,10 +4,10 @@ import secrets
 import asyncio
 import signal
 import sys
+import logging
 import requests
 import discord
 import blocklist
-import logging
 
 # TODO:
 # graceful exit
@@ -27,8 +27,7 @@ CLIENT = discord.Client(intents=intents)
 logger = logging.getLogger('discord')
 logger.setLevel(logging.INFO)
 handler = logging.FileHandler(filename="discord.log", encoding="utf-8", mode="w")
-dt_fmt = '%Y-%m-%d %H:%M:%S'
-formatter = logging.Formatter('[{asctime}] [{levelname:<8}] {name}: {message}', dt_fmt, style='{')
+formatter = logging.Formatter('[{asctime}] [{levelname:<8}] {name}: {message}', "%Y-%m-%d %H:%M:%S", style='{')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
@@ -122,10 +121,10 @@ def get_posts(tags="", is_nsfw=False):
             params["tags"] += " -" + tag
 
     response = requests.get(f"{BASE_URL}posts.json", params=params, headers=HEADERS,
-                            auth=(secrets.login, secrets.api_key))
+                            auth=(secrets.login, secrets.api_key), timeout=5)
 
     if response.status_code != 200:
-        HTTP404Exception(str(response.status_code))
+        raise HTTP404Exception(str(response.status_code))
 
     response_json = response.json()
 
@@ -174,9 +173,11 @@ async def on_message(user_message):
 
         try:
             posts = get_posts(tags, is_nsfw)
-        except HTTP404Exception:
-            await channel.send(f"Error: recieved status code: {response.status_code}")
+        except HTTP404Exception as e:
+            await channel.send(f"Error: Recieved status code: {e}")
             return
+        except requests.exceptions.ConnectTimeout:
+            await channel.send("Error: Request timed out")
 
         filtered = []
         for post in posts:
