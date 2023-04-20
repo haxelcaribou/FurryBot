@@ -2,7 +2,6 @@
 
 import secrets
 import asyncio
-import re
 import signal
 import sys
 import requests
@@ -43,9 +42,6 @@ HEADERS = {
     # If you are running this yourself change the User_Agent to include your main e621 username
     "User-Agent": "DiscordFurryBot V1.2",
 }
-
-URL_REGEX = re.compile(
-    r"(https?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+)")
 
 MAX_CACHE_SIZE = 32
 cache = []
