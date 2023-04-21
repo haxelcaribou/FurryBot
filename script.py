@@ -8,10 +8,10 @@ import logging
 import requests
 import discord
 import blocklist
+import datetime
 
 # TODO:
 # graceful exit
-# add way to look at image data (post artist?)
 # tag search
 # rate limiting
 
@@ -26,8 +26,10 @@ CLIENT = discord.Client(intents=intents)
 # enable logging
 logger = logging.getLogger('discord')
 logger.setLevel(logging.INFO)
-handler = logging.FileHandler(filename="discord.log", encoding="utf-8", mode="w")
-formatter = logging.Formatter('[{asctime}] [{levelname:<8}] {name}: {message}', "%Y-%m-%d %H:%M:%S", style='{')
+handler = logging.FileHandler(
+    filename="discord.log", encoding="utf-8", mode="w")
+formatter = logging.Formatter(
+    '[{asctime}] [{levelname:<8}] {name}: {message}', "%Y-%m-%d %H:%M:%S", style='{')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
@@ -57,22 +59,22 @@ class ButtonRow(discord.ui.View):
     active_style = discord.ButtonStyle.blurple
     inactive_style = discord.ButtonStyle.grey
 
-    @discord.ui.button(style=inactive_style, label="First", disabled=True, custom_id="first_button")
+    @discord.ui.button(style=inactive_style, label="First", emoji="⬅️", disabled=True, custom_id="first_button")
     async def first_image(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         await change_image(interaction.message, to_left=True, to_end=True)
 
-    @discord.ui.button(style=inactive_style, label="Prev", emoji="⬅️", disabled=True, custom_id="prev_button")
+    @discord.ui.button(style=inactive_style, label="Prev", emoji="◀️", disabled=True, custom_id="prev_button")
     async def prev_image(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         await change_image(interaction.message, to_left=True)
 
-    @discord.ui.button(style=active_style, label="Next", emoji="➡️", disabled=False, custom_id="next_button")
+    @discord.ui.button(style=active_style, label="Next", emoji="▶️", disabled=False, custom_id="next_button")
     async def next_image(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         await change_image(interaction.message)
 
-    @discord.ui.button(style=active_style, label="Last", disabled=False, custom_id="last_button")
+    @discord.ui.button(style=active_style, label="Last", emoji="➡️", disabled=False, custom_id="last_button")
     async def last_image(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         await change_image(interaction.message, to_end=True)
@@ -146,6 +148,7 @@ async def on_ready():
     print(f"We have logged in as {CLIENT.user}")
     await CLIENT.change_presence(activity=discord.Game(STATUS))
 
+
 @CLIENT.event
 async def on_message_delete(message):
     if message.author != CLIENT.user:
@@ -154,6 +157,7 @@ async def on_message_delete(message):
     if cache_pos == -1:
         return
     cache.pop(cache_pos)
+
 
 @CLIENT.event
 async def on_message(user_message):
@@ -191,20 +195,15 @@ async def on_message(user_message):
 
         post = posts[0]
 
-        view = ButtonRow()
         embed = discord.Embed(title=tags, url=f"{BASE_URL}posts/{post['id']}")
-        # embed.description = post["description"]
-        embed.set_image(url=post["file"]["url"])
-        embed.set_footer(text=f"Image 1 of {len(posts)}")
-        embed.set_author(name=author, icon_url=author.avatar.url)
-        if is_nsfw:
-            embed.color = discord.Color.brand_red()
-        else:
-            embed.color = discord.Color.brand_green()
+        embed = set_embed_params(embed, post)
+        embed.set_footer(text=f"Post 1 of {len(posts)}")
+
+        view = ButtonRow()
         bot_message = await channel.send(embed=embed, view=view)
 
         cache.append({"message": bot_message, "pos": 0,
-                     "posts": posts, "view": view, "embed": embed})
+                     "posts": posts, "embed": embed, "view": view})
         if len(cache) > MAX_CACHE_SIZE:
             old_post = cache.pop(0)
             await disable_buttons(old_post)
@@ -250,12 +249,35 @@ async def change_image(message, to_left=False, to_end=False):
 
     post = posts[pos]
 
-    embed.set_image(url=post["file"]["url"])
-    embed.set_footer(text=f"Image {pos+1} of {len(posts)}")
-    embed.url = f"{BASE_URL}posts/{post['id']}"
-    # embed.description = post["description"]
+    embed = set_embed_params(embed, post)
+    embed.set_footer(text=f"Post {pos+1} of {len(posts)}")
 
     await message.edit(embed=embed, view=view)
+
+
+def set_embed_params(embed, post):
+    embed.set_image(url=post["file"]["url"])
+    embed.url = f"{BASE_URL}posts/{post['id']}"
+    embed.timestamp = datetime.datetime.now()
+
+    embed.clear_fields()
+    artists = [t.removesuffix("_(artist)") for t in post["tags"]["artist"]
+               if t not in ("avoid_posting", "conditional_dnp", "epilepsy_warning", "sound_warning", "unknown_artist_signature")]
+    if len(artists) == 1:
+        embed.add_field(name="Artist", value=artists[0])
+    elif len(artists) > 1:
+        embed.add_field(name="Artists", value=", ".join(artists))
+    embed.add_field(name="Score", value=post["score"]["total"])
+
+    if post["rating"] == "s":
+        embed.color = discord.Color.dark_green()
+    elif post["rating"] == "q":
+        embed.color = discord.Color.gold()
+    else:
+        embed.color = discord.Color.red()
+
+    # embed.description = post["description"]
+    return embed
 
 
 async def cleanup():
