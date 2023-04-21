@@ -8,7 +8,7 @@ import logging
 import requests
 import discord
 import blocklist
-import datetime
+from datetime import datetime
 
 # TODO:
 # graceful exit
@@ -258,16 +258,20 @@ async def change_image(message, to_left=False, to_end=False):
 def set_embed_params(embed, post):
     embed.set_image(url=post["file"]["url"])
     embed.url = f"{BASE_URL}posts/{post['id']}"
-    embed.timestamp = datetime.datetime.now()
+    embed.timestamp = datetime.now()
 
     embed.clear_fields()
+    embed.add_field(name="Uploaded", value=datetime.strptime(post["created_at"][:19], "%Y-%m-%dT%H:%M:%S").strftime("%B %-d %Y"))
+
     artists = [t.removesuffix("_(artist)") for t in post["tags"]["artist"]
                if t not in ("avoid_posting", "conditional_dnp", "epilepsy_warning", "sound_warning", "unknown_artist_signature")]
     if len(artists) == 1:
         embed.add_field(name="Artist", value=artists[0])
     elif len(artists) > 1:
         embed.add_field(name="Artists", value=", ".join(artists))
+    
     embed.add_field(name="Score", value=post["score"]["total"])
+    # embed.add_field(name="Size", value=f"{post['file']['width']}x{post['file']['height']}")
 
     if post["rating"] == "s":
         embed.color = discord.Color.dark_green()
