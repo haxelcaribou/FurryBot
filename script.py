@@ -64,7 +64,6 @@ class ButtonRow(discord.ui.View):
     @discord.ui.button(style=inactive_style,
                        label="First",
                        emoji="⬅️",
-                       disabled=True,
                        custom_id="first_button")
     async def first_image(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
@@ -73,7 +72,6 @@ class ButtonRow(discord.ui.View):
     @discord.ui.button(style=inactive_style,
                        label="Prev",
                        emoji="◀️",
-                       disabled=True,
                        custom_id="prev_button")
     async def prev_image(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
@@ -82,7 +80,6 @@ class ButtonRow(discord.ui.View):
     @discord.ui.button(style=active_style,
                        label="Next",
                        emoji="▶️",
-                       disabled=False,
                        custom_id="next_button")
     async def next_image(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
@@ -91,7 +88,6 @@ class ButtonRow(discord.ui.View):
     @discord.ui.button(style=active_style,
                        label="Last",
                        emoji="➡️",
-                       disabled=False,
                        custom_id="last_button")
     async def last_image(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
@@ -99,7 +95,6 @@ class ButtonRow(discord.ui.View):
 
     @discord.ui.button(style=discord.ButtonStyle.red,
                        label="Delete",
-                       disabled=False,
                        custom_id="delete_message")
     async def delete_message(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.message.delete()
@@ -217,7 +212,7 @@ async def on_message(user_message):
         embed.set_author(name=author, icon_url=author.avatar.url)
         embed.set_footer(text=f"Post 1 of {len(posts)}")
 
-        view = ButtonRow()
+        view = set_buttons_enable(ButtonRow(), 0, len(posts) - 1)
         bot_message = await channel.send(embed=embed, view=view)
 
         cache.append({"message": bot_message, "pos": 0,
@@ -246,17 +241,7 @@ async def change_image(message, to_left=False, to_end=False):
 
     cache[cache_pos]["pos"] = pos
 
-    for button in view.children:
-        button.disabled = False
-
-    if pos == 0:
-        for button in view.children:
-            button.disabled = button.custom_id in ("first_button",
-                                                   "prev_button")
-    elif pos == len(posts) - 1:
-        for button in view.children:
-            button.disabled = button.custom_id in ("next_button",
-                                                   "last_button")
+    view = set_buttons_enable(view, pos, len(posts) - 1)
 
     post = posts[pos]
 
@@ -264,6 +249,22 @@ async def change_image(message, to_left=False, to_end=False):
     embed.set_footer(text=f"Post {pos+1} of {len(posts)}")
 
     await message.edit(embed=embed, view=view)
+
+
+def set_buttons_enable(view, pos, num_posts):
+    for button in view.children:
+        button.disabled = False
+
+    if pos == 0:
+        for button in view.children:
+            button.disabled = button.custom_id in ("first_button",
+                                                   "prev_button")
+    elif pos == num_posts:
+        for button in view.children:
+            button.disabled = button.custom_id in ("next_button",
+                                                   "last_button")
+
+    return view
 
 
 def set_embed_params(embed, post):
